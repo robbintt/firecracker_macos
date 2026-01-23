@@ -1,0 +1,34 @@
+# Build artifacts
+kernel/vmlinux
+kernel/build/
+rootfs/rootfs.ext4
+
+# macOS build artifacts
+macos/.build/
+macos/macos-vm-boot
+macos/.swiftpm/
+
+# Firecracker runtime
+*.socket
+firecracker-*.tgz
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+/tmp/
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# CI artifacts
+*.tar.gz
+*.tgz
+release-*/

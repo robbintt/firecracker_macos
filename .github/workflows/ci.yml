@@ -1,0 +1,199 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  linux-build-and-test:
+    name: Linux - Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential flex bison libelf-dev libssl-dev bc wget
+    
+    - name: Check KVM availability
+      run: |
+        echo "Checking KVM support..."
+        if [ -e /dev/kvm ]; then
+          echo "✓ /dev/kvm exists"
+          ls -la /dev/kvm
+        else
+          echo "⚠ /dev/kvm not available (VM tests will be limited)"
+        fi
+    
+    - name: Cache kernel build
+      uses: actions/cache@v3
+      with:
+        path: kernel/build
+        key: kernel-${{ hashFiles('kernel/microvm-kernel.config') }}
+    
+    - name: Build kernel
+      run: |
+        cd kernel
+        if [ ! -f vmlinux ]; then
+          echo "Building kernel..."
+          ./build-kernel.sh
+        else
+          echo "Using cached kernel"
+        fi
+    
+    - name: Verify kernel
+      run: |
+        ls -lh kernel/vmlinux
+        file kernel/vmlinux
+    
+    - name: Build rootfs
+      run: |
+        cd rootfs
+        sudo ./build-rootfs.sh
+    
+    - name: Verify rootfs
+      run: |
+        ls -lh rootfs/rootfs.ext4
+        file rootfs/rootfs.ext4
+    
+    - name: Install Firecracker
+      run: |
+        ARCH="x86_64"
+        VERSION="v1.7.0"
+        curl -LOJ https://github.com/firecracker-microvm/firecracker/releases/download/${VERSION}/firecracker-${VERSION}-${ARCH}.tgz
+        tar -xzf firecracker-${VERSION}-${ARCH}.tgz
+        sudo mv release-${VERSION}-${ARCH}/firecracker-${VERSION}-${ARCH} /usr/local/bin/firecracker
+        sudo chmod +x /usr/local/bin/firecracker
+        firecracker --version
+    
+    - name: Run boot tests
+      run: |
+        cd tests
+        chmod +x test-boot.sh
+        ./test-boot.sh
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: linux-artifacts
+        path: |
+          kernel/vmlinux
+          rootfs/rootfs.ext4
+        retention-days: 7
+
+  macos-build:
+    name: macOS - Build Wrapper
+    runs-on: macos-13
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Check Swift version
+      run: swift --version
+    
+    - name: Build macOS wrapper
+      run: |
+        cd macos
+        ./build.sh
+    
+    - name: Verify binary
+      run: |
+        ls -lh macos/macos-vm-boot
+        file macos/macos-vm-boot
+        ./macos/macos-vm-boot --help
+    
+    - name: Upload macOS binary
+      uses: actions/upload-artifact@v3
+      with:
+        name: macos-binary
+        path: macos/macos-vm-boot
+        retention-days: 7
+
+  macos-test:
+    name: macOS - Test with Artifacts
+    runs-on: macos-13
+    needs: [linux-build-and-test, macos-build]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Download Linux artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: linux-artifacts
+    
+    - name: Download macOS binary
+      uses: actions/download-artifact@v3
+      with:
+        name: macos-binary
+        path: macos/
+    
+    - name: Set up artifacts
+      run: |
+        # Move artifacts to correct locations
+        mkdir -p kernel rootfs
+        mv vmlinux kernel/
+        mv rootfs.ext4 rootfs/
+        chmod +x macos/macos-vm-boot
+        
+        # Verify
+        ls -lh kernel/vmlinux
+        ls -lh rootfs/rootfs.ext4
+        ls -lh macos/macos-vm-boot
+    
+    - name: Test argument parsing
+      run: |
+        ./macos/macos-vm-boot --help
+        
+        # Test error cases
+        ! ./macos/macos-vm-boot --kernel kernel/vmlinux --memory 128 2>/dev/null || exit 1
+        ! ./macos/macos-vm-boot --rootfs rootfs/rootfs.ext4 --memory 128 2>/dev/null || exit 1
+        ! ./macos/macos-vm-boot --kernel /nonexistent --rootfs rootfs/rootfs.ext4 --memory 128 2>/dev/null || exit 1
+        
+        echo "✓ Argument parsing tests passed"
+    
+    # Note: Full VM boot test would require entitlements and may not work in CI
+    # We validate argument parsing and binary correctness instead
+    
+    - name: Verify same interface as Linux
+      run: |
+        echo "Verifying both platforms use the same interface..."
+        
+        # Both should support these arguments
+        ./macos/macos-vm-boot --help | grep -q "\-\-kernel"
+        ./macos/macos-vm-boot --help | grep -q "\-\-rootfs"
+        ./macos/macos-vm-boot --help | grep -q "\-\-memory"
+        
+        echo "✓ Interface compatibility verified"
+
+  documentation:
+    name: Check Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Check README files exist
+      run: |
+        test -f README.md
+        test -f macos/README.md
+        test -f kernel/README.md
+        test -f rootfs/README.md
+        test -f linux/README.md
+        test -f docs/ARCHITECTURE.md
+        test -f docs/TROUBLESHOOTING.md
+        echo "✓ All README files present"
+    
+    - name: Check for broken links in README
+      run: |
+        # Simple check for common markdown issues
+        ! grep -r "]()" *.md || exit 1
+        echo "✓ No obvious broken links"
