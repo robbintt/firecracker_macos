@@ -6,15 +6,17 @@ class VMManager: NSObject {
     private let rootfsPath: String
     private let memoryMB: Int
     private let cpuCount: Int
+    private let noNetwork: Bool
     
     private var virtualMachine: VZVirtualMachine?
     private var shouldStop = false
     
-    init(kernelPath: String, rootfsPath: String, memoryMB: Int, cpuCount: Int) {
+    init(kernelPath: String, rootfsPath: String, memoryMB: Int, cpuCount: Int, noNetwork: Bool = false) {
         self.kernelPath = kernelPath
         self.rootfsPath = rootfsPath
         self.memoryMB = memoryMB
         self.cpuCount = cpuCount
+        self.noNetwork = noNetwork
         super.init()
     }
     
@@ -90,10 +92,12 @@ class VMManager: NSObject {
         let memoryBalloonDevice = VZVirtioTraditionalMemoryBalloonDeviceConfiguration()
         configuration.memoryBalloonDevices = [memoryBalloonDevice]
         
-        // Network device (optional, but useful)
-        let networkDevice = VZVirtioNetworkDeviceConfiguration()
-        networkDevice.attachment = VZNATNetworkDeviceAttachment()
-        configuration.networkDevices = [networkDevice]
+        // Network device (optional)
+        if !noNetwork {
+            let networkDevice = VZVirtioNetworkDeviceConfiguration()
+            networkDevice.attachment = VZNATNetworkDeviceAttachment()
+            configuration.networkDevices = [networkDevice]
+        }
         
         return configuration
     }

@@ -7,6 +7,7 @@ struct MacOSVMBoot {
         var rootfsPath: String?
         var memoryMB: Int?
         var cpuCount: Int?
+        var noNetwork: Bool = false
         
         static func parse() -> Arguments? {
             var args = Arguments()
@@ -53,6 +54,9 @@ struct MacOSVMBoot {
                         return nil
                     }
                     i += 2
+                case "--no-network":
+                    args.noNetwork = true
+                    i += 1
                 case "--help", "-h":
                     printUsage()
                     return nil
@@ -103,13 +107,14 @@ struct MacOSVMBoot {
         
         static func printUsage() {
             print("""
-            Usage: macos-vm-boot --kernel <path> --rootfs <path> --memory <MB> [--cpus <N>]
+            Usage: macos-vm-boot --kernel <path> --rootfs <path> --memory <MB> [--cpus <N>] [--no-network]
             
             Options:
               --kernel <path>    Path to the kernel image (vmlinux)
               --rootfs <path>    Path to the root filesystem image (rootfs.ext4)
               --memory <MB>      Amount of memory in megabytes
               --cpus <N>         Number of CPUs (default: 1)
+              --no-network       Disable networking
               --help, -h         Show this help message
             
             Example:
@@ -132,7 +137,8 @@ struct MacOSVMBoot {
             kernelPath: args.kernelPath!,
             rootfsPath: args.rootfsPath!,
             memoryMB: args.memoryMB!,
-            cpuCount: args.cpuCount ?? 1
+            cpuCount: args.cpuCount ?? 1,
+            noNetwork: args.noNetwork
         )
         
         do {
