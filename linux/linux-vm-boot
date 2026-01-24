@@ -121,7 +121,13 @@ ROOTFS_PATH=$(realpath "$ROOTFS_PATH")
 
 # Create temporary directory for Firecracker files
 TEMP_DIR=$(mktemp -d)
-trap "rm -rf ${TEMP_DIR}" EXIT
+
+# Cleanup and restore terminal on exit
+cleanup() {
+    rm -rf "${TEMP_DIR}"
+    stty sane 2>/dev/null || true
+}
+trap cleanup EXIT
 
 # Create Firecracker configuration
 CONFIG_FILE="${TEMP_DIR}/config.json"
@@ -168,6 +174,8 @@ echo "Kernel: ${KERNEL_PATH}"
 echo "Rootfs: ${ROOTFS_PATH}"
 echo "Memory: ${MEMORY_MB} MB"
 echo "CPUs: ${CPU_COUNT}"
+echo ""
+echo "To exit: run 'poweroff' inside the VM"
 echo "---"
 
 # Run Firecracker

@@ -22,7 +22,7 @@ Both platforms use the **same kernel binary** (`vmlinux`) and **same root filesy
 **Linux**:
 - Linux with KVM support
 - GCC/Make/standard build tools
-- Firecracker binary
+- Firecracker binary (auto-installed by `setup-debian.sh`)
 
 ### Build Everything
 
@@ -49,7 +49,7 @@ cd ..
 
 ### Run a VM
 
-**macOS**:
+**macOS** (has NAT networking by default):
 ```bash
 # Intel Mac:
 ./macos/macos-vm-boot --kernel kernel/vmlinux --rootfs rootfs/rootfs.ext4 --memory 128
@@ -58,16 +58,17 @@ cd ..
 ./macos/macos-vm-boot --kernel kernel/vmlinux-arm64 --rootfs rootfs/rootfs.ext4 --memory 128
 ```
 
-**Linux**:
+**Linux** (networking requires TAP setup, use --no-network for console-only):
 ```bash
-./linux/linux-vm-boot --kernel kernel/vmlinux --rootfs rootfs/rootfs.ext4 --memory 128
+./linux/linux-vm-boot --kernel kernel/vmlinux --rootfs rootfs/rootfs.ext4 --memory 128 --no-network
 ```
+
+**Login**: `root` / `root`
 
 Inside the VM, you can run:
 ```bash
 /root/test.sh  # Run system tests
-poweroff       # Shutdown the VM
-```
+poweroff       # Shutdown the VM (cleanly restores terminal)
 
 ## Architecture
 
@@ -320,7 +321,8 @@ This project is ideal for:
 
 - No live migration or snapshots (MVP scope)
 - No GUI (console only)
-- Linux networking requires manual TAP setup
+- **macOS**: NAT networking works out of the box
+- **Linux**: Networking requires manual TAP setup (see PLAN.md); use `--no-network` for console-only
 - Not suitable for production workloads (MVP/development use)
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details on limitations and future enhancements.
