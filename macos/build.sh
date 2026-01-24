@@ -24,4 +24,8 @@ swift build -c release
 # Copy the binary to the root of the macos directory
 cp .build/release/macos-vm-boot ./macos-vm-boot
 
+# Sign the binary with virtualization entitlement
+echo "Signing binary with virtualization entitlement..."
+codesign --sign - --entitlements macos-vm-boot.entitlements --force ./macos-vm-boot
+
 echo "Build complete! Binary: macos/macos-vm-boot"
