@@ -20,6 +20,7 @@ class VMManager: NSObject {
         super.init()
     }
     
+    @MainActor
     func run() async throws {
         let configuration = try createVMConfiguration()
         
