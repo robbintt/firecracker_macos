@@ -55,6 +55,30 @@ if [ -d "overlay" ]; then
     cp -r overlay/* "${MOUNT_POINT}/"
 fi
 
+# Set up resolv.conf for chroot networking
+echo "nameserver 8.8.8.8" > "${MOUNT_POINT}/etc/resolv.conf"
+
+# Install OpenRC and essential packages
+echo "Installing OpenRC and base packages..."
+chroot "${MOUNT_POINT}" /sbin/apk add --no-cache \
+    openrc \
+    alpine-base \
+    agetty
+
+# Enable essential services
+chroot "${MOUNT_POINT}" /sbin/rc-update add devfs sysinit
+chroot "${MOUNT_POINT}" /sbin/rc-update add dmesg sysinit
+chroot "${MOUNT_POINT}" /sbin/rc-update add mdev sysinit
+chroot "${MOUNT_POINT}" /sbin/rc-update add hwclock boot
+chroot "${MOUNT_POINT}" /sbin/rc-update add modules boot
+chroot "${MOUNT_POINT}" /sbin/rc-update add sysctl boot
+chroot "${MOUNT_POINT}" /sbin/rc-update add hostname boot
+chroot "${MOUNT_POINT}" /sbin/rc-update add bootmisc boot
+chroot "${MOUNT_POINT}" /sbin/rc-update add syslog boot 2>/dev/null || true
+chroot "${MOUNT_POINT}" /sbin/rc-update add mount-ro shutdown
+chroot "${MOUNT_POINT}" /sbin/rc-update add killprocs shutdown
+chroot "${MOUNT_POINT}" /sbin/rc-update add savecache shutdown
+
 # Set up basic system configuration
 echo "Configuring system..."
 
@@ -71,23 +95,44 @@ auto eth0
 iface eth0 inet dhcp
 EOL
 
-# Enable serial console (simple init without openrc)
+# Configure console (supports both Firecracker and macOS)
+# Use a boot script to detect which console is available
+cat > "${MOUNT_POINT}/etc/init.d/serial-console" << 'EOL'
+#!/sbin/openrc-run
+
+description="Start getty on available serial console"
+
+depend() {
+    after localmount
+}
+
+start() {
+    # Firecracker uses ttyS0
+    if [ -e /dev/ttyS0 ]; then
+        ebegin "Starting getty on ttyS0"
+        start-stop-daemon --start --background --exec /sbin/getty -- -L ttyS0 115200 vt100
+        eend $?
+    fi
+    
+    # macOS Virtualization.framework uses hvc0
+    if [ -e /dev/hvc0 ]; then
+        ebegin "Starting getty on hvc0"
+        start-stop-daemon --start --background --exec /sbin/getty -- -L hvc0 115200 vt100
+        eend $?
+    fi
+}
+EOL
+chmod +x "${MOUNT_POINT}/etc/init.d/serial-console"
+chroot "${MOUNT_POINT}" /sbin/rc-update add serial-console default
+
+# Minimal inittab - let OpenRC handle consoles
 cat > "${MOUNT_POINT}/etc/inittab" << 'EOL'
-# Minimal inittab for Firecracker (no openrc)
-::sysinit:/bin/mount -t proc proc /proc
-::sysinit:/bin/mount -t sysfs sysfs /sys
-::sysinit:/bin/mount -t devtmpfs devtmpfs /dev
-::sysinit:/bin/hostname microvm
+::sysinit:/sbin/openrc sysinit
+::sysinit:/sbin/openrc boot
+::wait:/sbin/openrc default
 
-# Serial console for Firecracker
-ttyS0::respawn:/sbin/getty -L ttyS0 115200 vt100
-
-# Virtio console for macOS Virtualization.framework
-hvc0::respawn:/sbin/getty -L hvc0 115200 vt100
-
-# Shutdown
 ::ctrlaltdel:/sbin/reboot
-::shutdown:/bin/umount -a -r
+::shutdown:/sbin/openrc shutdown
 EOL
 
 # Create a simple test script
@@ -141,5 +186,6 @@ echo "Output: ${ROOTFS_IMAGE}"
 echo "Size: $(du -h ${ROOTFS_IMAGE} | cut -f1)"
 echo ""
 echo "You can test it with:"
+echo "No network for now, add: --no-network to the below."
 echo "  Linux:  ./linux/linux-vm-boot --kernel ../kernel/vmlinux --rootfs ${ROOTFS_IMAGE} --memory 128"
 echo "  macOS:  ./macos/macos-vm-boot --kernel ../kernel/vmlinux --rootfs ${ROOTFS_IMAGE} --memory 128"
