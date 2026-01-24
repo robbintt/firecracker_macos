@@ -15,7 +15,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "macos-vm-boot",
-            path: "Sources/macos-vm-boot"
+            path: "Sources/macos-vm-boot",
+            swiftSettings: [
+                .unsafeFlags(["-parse-as-library"])
+            ]
         )
     ]
 )
