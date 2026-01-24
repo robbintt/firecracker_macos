@@ -5,14 +5,16 @@ class VMManager: NSObject {
     private let kernelPath: String
     private let rootfsPath: String
     private let memoryMB: Int
+    private let cpuCount: Int
     
     private var virtualMachine: VZVirtualMachine?
     private var shouldStop = false
     
-    init(kernelPath: String, rootfsPath: String, memoryMB: Int) {
+    init(kernelPath: String, rootfsPath: String, memoryMB: Int, cpuCount: Int) {
         self.kernelPath = kernelPath
         self.rootfsPath = rootfsPath
         self.memoryMB = memoryMB
+        self.cpuCount = cpuCount
         super.init()
     }
     
@@ -28,6 +30,7 @@ class VMManager: NSObject {
         print("Kernel: \(kernelPath)")
         print("Rootfs: \(rootfsPath)")
         print("Memory: \(memoryMB) MB")
+        print("CPUs: \(cpuCount)")
         print("---")
         
         try await virtualMachine?.start()
@@ -45,7 +48,7 @@ class VMManager: NSObject {
         let configuration = VZVirtualMachineConfiguration()
         
         // CPU configuration
-        configuration.cpuCount = min(ProcessInfo.processInfo.processorCount, 2)
+        configuration.cpuCount = cpuCount
         
         // Memory configuration
         let memorySize = UInt64(memoryMB) * 1024 * 1024

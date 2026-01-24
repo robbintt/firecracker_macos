@@ -4,6 +4,7 @@ struct Arguments {
     var kernelPath: String?
     var rootfsPath: String?
     var memoryMB: Int?
+    var cpuCount: Int?
     
     static func parse() -> Arguments? {
         var args = Arguments()
@@ -35,6 +36,18 @@ struct Arguments {
                     args.memoryMB = memory
                 } else {
                     print("Error: --memory must be an integer")
+                    return nil
+                }
+                i += 2
+            case "--cpus":
+                guard i + 1 < arguments.count else {
+                    print("Error: --cpus requires a value")
+                    return nil
+                }
+                if let cpus = Int(arguments[i + 1]) {
+                    args.cpuCount = cpus
+                } else {
+                    print("Error: --cpus must be an integer")
                     return nil
                 }
                 i += 2
@@ -77,21 +90,28 @@ struct Arguments {
             return false
         }
         
+        let cpus = cpuCount ?? 1
+        guard cpus > 0 && cpus <= ProcessInfo.processInfo.processorCount else {
+            print("Error: CPUs must be between 1 and \(ProcessInfo.processInfo.processorCount)")
+            return false
+        }
+        
         return true
     }
     
     static func printUsage() {
         print("""
-        Usage: macos-vm-boot --kernel <path> --rootfs <path> --memory <MB>
+        Usage: macos-vm-boot --kernel <path> --rootfs <path> --memory <MB> [--cpus <N>]
         
         Options:
           --kernel <path>    Path to the kernel image (vmlinux)
           --rootfs <path>    Path to the root filesystem image (rootfs.ext4)
           --memory <MB>      Amount of memory in megabytes
+          --cpus <N>         Number of CPUs (default: 1)
           --help, -h         Show this help message
         
         Example:
-          macos-vm-boot --kernel vmlinux --rootfs rootfs.ext4 --memory 128
+          macos-vm-boot --kernel vmlinux --rootfs rootfs.ext4 --memory 128 --cpus 2
         """)
     }
 }
@@ -111,7 +131,8 @@ struct MacOSVMBoot {
         let manager = VMManager(
             kernelPath: args.kernelPath!,
             rootfsPath: args.rootfsPath!,
-            memoryMB: args.memoryMB!
+            memoryMB: args.memoryMB!,
+            cpuCount: args.cpuCount ?? 1
         )
         
         do {

@@ -11,6 +11,13 @@ echo "Building Alpine Linux rootfs..."
 echo "Size: ${ROOTFS_SIZE}"
 echo "Alpine version: ${ALPINE_VERSION}"
 
+# Skip if output already exists (use --force to rebuild)
+if [ -f "${ROOTFS_IMAGE}" ] && [ "$1" != "--force" ]; then
+    echo "Rootfs already exists: ${ROOTFS_IMAGE}"
+    echo "Use './build-rootfs.sh --force' to rebuild"
+    exit 0
+fi
+
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then 
     echo "Error: This script must be run as root (use sudo)"

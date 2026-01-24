@@ -5,19 +5,21 @@ set -e
 KERNEL_PATH=""
 ROOTFS_PATH=""
 MEMORY_MB=""
+CPU_COUNT="1"
 
 print_usage() {
     cat << EOF
-Usage: linux-vm-boot --kernel <path> --rootfs <path> --memory <MB>
+Usage: linux-vm-boot --kernel <path> --rootfs <path> --memory <MB> [--cpus <N>]
 
 Options:
   --kernel <path>    Path to the kernel image (vmlinux)
   --rootfs <path>    Path to the root filesystem image (rootfs.ext4)
   --memory <MB>      Amount of memory in megabytes
+  --cpus <N>         Number of CPUs (default: 1)
   --help, -h         Show this help message
 
 Example:
-  linux-vm-boot --kernel vmlinux --rootfs rootfs.ext4 --memory 128
+  linux-vm-boot --kernel vmlinux --rootfs rootfs.ext4 --memory 128 --cpus 2
 EOF
 }
 
@@ -34,6 +36,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --memory)
             MEMORY_MB="$2"
+            shift 2
+            ;;
+        --cpus)
+            CPU_COUNT="$2"
             shift 2
             ;;
         --help|-h)
@@ -84,6 +90,12 @@ if ! [[ "$MEMORY_MB" =~ ^[0-9]+$ ]] || [ "$MEMORY_MB" -le 0 ]; then
     exit 1
 fi
 
+# Validate cpus is a positive integer
+if ! [[ "$CPU_COUNT" =~ ^[0-9]+$ ]] || [ "$CPU_COUNT" -le 0 ]; then
+    echo "Error: CPUs must be a positive integer"
+    exit 1
+fi
+
 # Check if firecracker is available
 if ! command -v firecracker &> /dev/null; then
     echo "Error: firecracker command not found"
@@ -118,7 +130,7 @@ cat > "$CONFIG_FILE" << EOF
     }
   ],
   "machine-config": {
-    "vcpu_count": 1,
+    "vcpu_count": ${CPU_COUNT},
     "mem_size_mib": ${MEMORY_MB},
     "ht_enabled": false
   },
@@ -136,6 +148,7 @@ echo "Starting VM..."
 echo "Kernel: ${KERNEL_PATH}"
 echo "Rootfs: ${ROOTFS_PATH}"
 echo "Memory: ${MEMORY_MB} MB"
+echo "CPUs: ${CPU_COUNT}"
 echo "---"
 
 # Run Firecracker

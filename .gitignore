@@ -1,5 +1,6 @@
 # Build artifacts
 kernel/vmlinux
+kernel/vmlinux-arm64
 kernel/build/
 rootfs/rootfs.ext4
 

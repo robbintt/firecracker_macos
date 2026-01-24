@@ -19,17 +19,39 @@ On Ubuntu/Debian:
 sudo apt-get install build-essential flex bison libelf-dev libssl-dev bc wget
 ```
 
+For ARM64 cross-compilation (Apple Silicon), also install:
+```bash
+sudo apt-get install gcc-aarch64-linux-gnu
+```
+
 ### macOS
 The kernel itself is built on Linux. macOS users should use the pre-built kernel or build on a Linux machine/VM.
 
 ## Building
+
+### x86_64 (Intel Macs, Linux)
 
 ```bash
 cd kernel
 ./build-kernel.sh
 ```
 
-This will:
+Outputs: `vmlinux`
+
+### ARM64 (Apple Silicon)
+
+```bash
+cd kernel
+./build-kernel.sh arm64
+```
+
+Outputs: `vmlinux-arm64`
+
+This cross-compiles using `aarch64-linux-gnu-gcc`.
+
+### Build Process
+
+The script will:
 1. Download Linux kernel source (v6.1.112)
 2. Apply the minimal microVM configuration
 3. Build the kernel

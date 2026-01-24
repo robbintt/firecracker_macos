@@ -29,7 +29,8 @@ Both platforms use the **same kernel binary** (`vmlinux`) and **same root filesy
 ```bash
 # 1. Build kernel (Linux only, takes 10-30 minutes)
 cd kernel
-./build-kernel.sh
+./build-kernel.sh          # x86_64 (Intel Macs, Linux)
+./build-kernel.sh arm64    # ARM64 (Apple Silicon) - cross-compile
 cd ..
 
 # 2. Build rootfs (Linux only, requires sudo)
@@ -50,7 +51,11 @@ cd ..
 
 **macOS**:
 ```bash
+# Intel Mac:
 ./macos/macos-vm-boot --kernel kernel/vmlinux --rootfs rootfs/rootfs.ext4 --memory 128
+
+# Apple Silicon:
+./macos/macos-vm-boot --kernel kernel/vmlinux-arm64 --rootfs rootfs/rootfs.ext4 --memory 128
 ```
 
 **Linux**:
@@ -152,12 +157,13 @@ firecracker_macos/
 Both wrappers expose the same interface:
 
 ```bash
-Usage: {macos-vm-boot|linux-vm-boot} --kernel <path> --rootfs <path> --memory <MB>
+Usage: {macos-vm-boot|linux-vm-boot} --kernel <path> --rootfs <path> --memory <MB> [--cpus <N>]
 
 Options:
   --kernel <path>    Path to the kernel image (vmlinux)
   --rootfs <path>    Path to the root filesystem image (rootfs.ext4)
   --memory <MB>      Amount of memory in megabytes
+  --cpus <N>         Number of CPUs (default: 1)
   --help, -h         Show help message
 ```
 
@@ -312,7 +318,6 @@ This project is ideal for:
 
 ## Limitations
 
-- Single vCPU (can be changed in wrapper code)
 - No live migration or snapshots (MVP scope)
 - No GUI (console only)
 - Linux networking requires manual TAP setup
