@@ -71,21 +71,23 @@ auto eth0
 iface eth0 inet dhcp
 EOL
 
-# Enable serial console
+# Enable serial console (simple init without openrc)
 cat > "${MOUNT_POINT}/etc/inittab" << 'EOL'
-::sysinit:/sbin/openrc sysinit
-::sysinit:/sbin/openrc boot
-::wait:/sbin/openrc default
+# Minimal inittab for Firecracker (no openrc)
+::sysinit:/bin/mount -t proc proc /proc
+::sysinit:/bin/mount -t sysfs sysfs /sys
+::sysinit:/bin/mount -t devtmpfs devtmpfs /dev
+::sysinit:/bin/hostname microvm
 
-# Set up a getty on the console
-hvc0::respawn:/sbin/getty 38400 hvc0
-tty1::respawn:/sbin/getty 38400 tty1
+# Serial console for Firecracker
+ttyS0::respawn:/sbin/getty -L ttyS0 115200 vt100
 
-# Stuff to do for the 3-finger salute
+# Virtio console for macOS Virtualization.framework
+hvc0::respawn:/sbin/getty -L hvc0 115200 vt100
+
+# Shutdown
 ::ctrlaltdel:/sbin/reboot
-
-# Stuff to do before rebooting
-::shutdown:/sbin/openrc shutdown
+::shutdown:/bin/umount -a -r
 EOL
 
 # Create a simple test script
@@ -127,6 +129,11 @@ rmdir "${MOUNT_POINT}"
 
 # Don't cleanup twice
 trap - EXIT
+
+# Fix ownership if run via sudo
+if [ -n "$SUDO_USER" ]; then
+    chown "$SUDO_USER:$SUDO_USER" "${ROOTFS_IMAGE}"
+fi
 
 echo ""
 echo "Rootfs build complete!"

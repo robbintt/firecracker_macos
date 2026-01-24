@@ -6,16 +6,18 @@ KERNEL_PATH=""
 ROOTFS_PATH=""
 MEMORY_MB=""
 CPU_COUNT="1"
+NO_NETWORK=false
 
 print_usage() {
     cat << EOF
-Usage: linux-vm-boot --kernel <path> --rootfs <path> --memory <MB> [--cpus <N>]
+Usage: linux-vm-boot --kernel <path> --rootfs <path> --memory <MB> [--cpus <N>] [--no-network]
 
 Options:
   --kernel <path>    Path to the kernel image (vmlinux)
   --rootfs <path>    Path to the root filesystem image (rootfs.ext4)
   --memory <MB>      Amount of memory in megabytes
   --cpus <N>         Number of CPUs (default: 1)
+  --no-network       Disable networking (no TAP device required)
   --help, -h         Show this help message
 
 Example:
@@ -41,6 +43,10 @@ while [[ $# -gt 0 ]]; do
         --cpus)
             CPU_COUNT="$2"
             shift 2
+            ;;
+        --no-network)
+            NO_NETWORK=true
+            shift
             ;;
         --help|-h)
             print_usage
@@ -96,10 +102,16 @@ if ! [[ "$CPU_COUNT" =~ ^[0-9]+$ ]] || [ "$CPU_COUNT" -le 0 ]; then
     exit 1
 fi
 
-# Check if firecracker is available
-if ! command -v firecracker &> /dev/null; then
-    echo "Error: firecracker command not found"
-    echo "Please install Firecracker: https://github.com/firecracker-microvm/firecracker/releases"
+# Check for firecracker (project-local first, then PATH)
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+if [ -x "${SCRIPT_DIR}/bin/firecracker" ]; then
+    FIRECRACKER="${SCRIPT_DIR}/bin/firecracker"
+elif command -v firecracker &> /dev/null; then
+    FIRECRACKER="firecracker"
+else
+    echo "Error: firecracker not found"
+    echo "Run ./setup-debian.sh or install manually from:"
+    echo "  https://github.com/firecracker-microvm/firecracker/releases"
     exit 1
 fi
 
@@ -114,6 +126,20 @@ trap "rm -rf ${TEMP_DIR}" EXIT
 # Create Firecracker configuration
 CONFIG_FILE="${TEMP_DIR}/config.json"
 SOCKET_PATH="${TEMP_DIR}/firecracker.socket"
+
+# Build network config
+if [ "$NO_NETWORK" = true ]; then
+    NETWORK_CONFIG=""
+else
+    NETWORK_CONFIG=',
+  "network-interfaces": [
+    {
+      "iface_id": "eth0",
+      "guest_mac": "AA:FC:00:00:00:01",
+      "host_dev_name": "tap0"
+    }
+  ]'
+fi
 
 cat > "$CONFIG_FILE" << EOF
 {
@@ -132,15 +158,8 @@ cat > "$CONFIG_FILE" << EOF
   "machine-config": {
     "vcpu_count": ${CPU_COUNT},
     "mem_size_mib": ${MEMORY_MB},
-    "ht_enabled": false
-  },
-  "network-interfaces": [
-    {
-      "iface_id": "eth0",
-      "guest_mac": "AA:FC:00:00:00:01",
-      "host_dev_name": "tap0"
-    }
-  ]
+    "smt": false
+  }${NETWORK_CONFIG}
 }
 EOF
 
@@ -152,7 +171,7 @@ echo "CPUs: ${CPU_COUNT}"
 echo "---"
 
 # Run Firecracker
-firecracker --api-sock "${SOCKET_PATH}" --config-file "${CONFIG_FILE}"
+$FIRECRACKER --api-sock "${SOCKET_PATH}" --config-file "${CONFIG_FILE}"
 
 echo "---"
 echo "VM stopped"
