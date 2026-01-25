@@ -10,8 +10,24 @@
 - Entropy (`/dev/random`)
 - Memory balloon
 - Networking (NAT)
+- ARM64 kernel boot (Apple Silicon) ✅
+- `--no-network` flag for console-only mode ✅
 
 **Linux wrapper:** At parity with macOS.
+
+**Dual-architecture rootfs build:**
+- `rootfs-x86_64.ext4` for x86_64 Linux/Firecracker ✅
+- `rootfs-aarch64.ext4` for ARM64 macOS/Apple Silicon ✅
+- Cross-compilation via QEMU user-mode emulation ✅
+- Console echo fix for hvc0 (stty -echo) ✅
+
+## Recent Progress
+
+- **2024-01**: ARM64 VM successfully boots on macOS Apple Silicon
+  - Kernel: `vmlinux-arm64` (Image format, not bzImage)
+  - Rootfs: Alpine Linux aarch64 via QEMU cross-compilation
+  - Console: virtio hvc0 with echo fix
+  - Setup: `setup-debian.sh` installs `qemu-user-static` for cross-builds
 
 ## TODO
 

@@ -8,7 +8,7 @@ This project enables you to boot **identical Linux VM workloads** on both macOS 
 - **Linux**: [Firecracker](https://github.com/firecracker-microvm/firecracker) microVM
 - **macOS**: Apple [Virtualization.framework](https://developer.apple.com/documentation/virtualization)
 
-Both platforms use the **same kernel binary** (`vmlinux`) and **same root filesystem image** (`rootfs.ext4`), with thin platform-specific wrappers providing a unified command-line interface.
+Both platforms use **architecture-matched kernel and rootfs** artifacts (`vmlinux-arm64`/`rootfs-aarch64.ext4` for Apple Silicon, `vmlinux`/`rootfs-x86_64.ext4` for Intel/Linux), with thin platform-specific wrappers providing a unified command-line interface.
 
 ## Quick Start
 
@@ -92,7 +92,7 @@ poweroff       # Shutdown the VM (cleanly restores terminal)
 ┌──────────────────────────────────────────────────┐
 │              User Interface                       │
 │  ./macos-vm-boot OR ./linux-vm-boot              │
-│  --kernel vmlinux --rootfs rootfs.ext4 --memory  │
+│  --kernel vmlinux --rootfs rootfs-ARCH.ext4 --memory │
 └───────────────┬──────────────────────────────────┘
                 │
         ┌───────┴────────┐
@@ -108,7 +108,7 @@ poweroff       # Shutdown the VM (cleanly restores terminal)
      ┌──────────▼───────────┐
      │  Shared Artifacts    │
      │  • vmlinux (kernel)  │
-     │  • rootfs.ext4       │
+     │  • rootfs-ARCH.ext4  │
      └──────────────────────┘
 ```
 
@@ -116,7 +116,7 @@ poweroff       # Shutdown the VM (cleanly restores terminal)
 
 - ✅ **Same Interface**: Identical CLI on both platforms
 - ✅ **Shared Kernel**: Single `vmlinux` binary works on both
-- ✅ **Shared Rootfs**: Single `rootfs.ext4` image works on both
+- ✅ **Dual-Arch Rootfs**: `rootfs-x86_64.ext4` and `rootfs-aarch64.ext4` built from single script
 - ✅ **Minimal**: No REST API, no complex abstractions
 - ✅ **Fast**: Boots in ~1-2 seconds
 - ✅ **Tiny**: ~10-20 MB kernel, ~50 MB rootfs (Alpine Linux)
@@ -148,7 +148,7 @@ firecracker_macos/
 │   ├── build-rootfs.sh          # Rootfs build script
 │   ├── overlay/                 # Files to copy into rootfs
 │   │   └── init                 # Custom init script
-│   └── rootfs.ext4              # Built rootfs image (after build)
+│   └── rootfs-{x86_64,aarch64}.ext4  # Built rootfs images (after build)
 ├── linux/
 │   ├── README.md                # Linux wrapper documentation
 │   └── linux-vm-boot            # Firecracker wrapper script
@@ -178,7 +178,7 @@ Usage: {macos-vm-boot|linux-vm-boot} --kernel <path> --rootfs <path> --memory <M
 
 Options:
   --kernel <path>    Path to the kernel image (vmlinux)
-  --rootfs <path>    Path to the root filesystem image (rootfs.ext4)
+  --rootfs <path>    Path to the root filesystem image (rootfs-ARCH.ext4)
   --memory <MB>      Amount of memory in megabytes
   --cpus <N>         Number of CPUs (default: 1)
   --help, -h         Show help message
@@ -274,7 +274,7 @@ For full VM boot testing, run manually and execute the guest test inside the VM:
 
 ```bash
 # Start VM (macOS or Linux)
-./macos/macos-vm-boot --kernel kernel/vmlinux --rootfs rootfs/rootfs.ext4 --memory 128
+./macos/macos-vm-boot --kernel kernel/vmlinux-arm64 --rootfs rootfs/rootfs-aarch64.ext4 --memory 128 --no-network
 
 # Inside the VM:
 /root/test.sh  # Run system tests
