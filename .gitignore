@@ -2,7 +2,7 @@
 kernel/vmlinux
 kernel/vmlinux-arm64
 kernel/build/
-rootfs/rootfs.ext4
+rootfs/rootfs*.ext4
 bin/
 
 # macOS build artifacts
