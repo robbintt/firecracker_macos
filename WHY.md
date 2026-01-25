@@ -2,6 +2,65 @@
 
 Honest assessment of when to use this vs Lima/Colima.
 
+## The Lost Thread
+
+**Original intent** (implied by name "firecracker_macos"):
+> Firecracker API, shimmed to VZ.framework on macOS.
+
+**What was actually built:**
+> Separate CLI tool that also boots VMs. No API compatibility.
+
+### What Firecracker Provides
+
+- REST API for VM management (`/machine-config`, `/boot-source`, `/drives`, etc.)
+- Snapshot/restore via API
+- Rate limiters, vsock, metrics
+- Ecosystem: SDKs, orchestrators, tooling that speaks the API
+
+### What a Real Shim Would Look Like
+
+```
+Firecracker REST API (port 8080)
+         │
+         ▼
+    ┌─────────┐
+    │  Shim   │ ← Translates API calls to native backend
+    └────┬────┘
+         │
+    ┌────▼─────────────────┐
+    │ VZ.framework (macOS) │
+    │ Firecracker (Linux)  │
+    └──────────────────────┘
+```
+
+Existing Firecracker SDKs and tools would just work on macOS.
+
+### What We Have Instead
+
+```
+┌─────────────────┐     ┌─────────────────┐
+│ macos-vm-boot   │     │ linux-vm-boot   │
+│ (Swift CLI)     │     │ (Bash script)   │
+└────────┬────────┘     └────────┬────────┘
+         │                       │
+    VZ.framework            Firecracker
+```
+
+Two separate tools. Similar flags. No API compatibility. No shim.
+
+### Gap to Close
+
+To fulfill the original intent:
+
+1. Implement Firecracker REST API in the macOS wrapper
+2. Translate API calls to VZ.framework equivalents
+3. Existing Firecracker tooling works on macOS
+
+The **Rust unified shim** in TODOs.md is the path here - single binary that:
+- Exposes Firecracker API on both platforms
+- Uses native backend (VZ.framework or Firecracker)
+- Enables ecosystem compatibility
+
 ## Comparison
 
 | This Project | Lima/Colima |
