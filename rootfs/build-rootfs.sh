@@ -173,6 +173,7 @@ start() {
     
     # macOS Virtualization.framework uses hvc0
     if [ -e /dev/hvc0 ]; then
+        stty -F /dev/hvc0 -echo
         ebegin "Starting getty on hvc0"
         start-stop-daemon --start --background --exec /sbin/getty -- -L hvc0 115200 vt100
         eend $?
