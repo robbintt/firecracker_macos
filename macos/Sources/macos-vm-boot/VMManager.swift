@@ -36,7 +36,24 @@ class VMManager: NSObject {
         print("CPUs: \(cpuCount)")
         print("---")
         
-        try await virtualMachine?.start()
+        do {
+            try await virtualMachine?.start()
+        } catch let error as NSError {
+            print("VM start failed:")
+            print("  Domain: \(error.domain)")
+            print("  Code: \(error.code)")
+            print("  Description: \(error.localizedDescription)")
+            if let reason = error.localizedFailureReason {
+                print("  Reason: \(reason)")
+            }
+            if let recovery = error.localizedRecoverySuggestion {
+                print("  Recovery: \(recovery)")
+            }
+            for (key, value) in error.userInfo {
+                print("  \(key): \(value)")
+            }
+            throw error
+        }
         
         // Wait for VM to stop
         while !shouldStop {
