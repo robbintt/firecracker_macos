@@ -23,6 +23,19 @@ Both platforms use the **same kernel binary** (`vmlinux`) and **same root filesy
 - Linux with KVM support
 - GCC/Make/standard build tools
 - Firecracker binary (auto-installed by `setup-debian.sh`)
+- **qemu-user-static** (for ARM64 rootfs cross-compilation)
+
+**Install dependencies**:
+```bash
+# Debian/Ubuntu
+sudo apt-get install qemu-user-static binfmt-support
+
+# RHEL/Fedora
+sudo dnf install qemu-user-static
+
+# Arch
+sudo pacman -S qemu-user-static qemu-user-static-binfmt
+```
 
 ### Build Everything
 
@@ -35,7 +48,10 @@ cd ..
 
 # 2. Build rootfs (Linux only, requires sudo)
 cd rootfs
-sudo ./build-rootfs.sh
+sudo ./build-rootfs.sh              # Builds both x86_64 and ARM64
+# Or build single architecture:
+# sudo ./build-rootfs.sh --arch=x86_64
+# sudo ./build-rootfs.sh --arch=aarch64
 cd ..
 
 # 3. Build platform wrapper
@@ -49,18 +65,18 @@ cd ..
 
 ### Run a VM
 
-**macOS** (has NAT networking by default):
+**macOS**:
 ```bash
-# Intel Mac:
-./macos/macos-vm-boot --kernel kernel/vmlinux --rootfs rootfs/rootfs.ext4 --memory 128
+# Apple Silicon (networking requires --no-network for now):
+./macos/macos-vm-boot --kernel kernel/vmlinux-arm64 --rootfs rootfs/rootfs-aarch64.ext4 --memory 128 --no-network
 
-# Apple Silicon:
-./macos/macos-vm-boot --kernel kernel/vmlinux-arm64 --rootfs rootfs/rootfs.ext4 --memory 128
+# Intel Mac (if you built x86_64):
+./macos/macos-vm-boot --kernel kernel/vmlinux --rootfs rootfs/rootfs-x86_64.ext4 --memory 128
 ```
 
 **Linux** (networking requires TAP setup, use --no-network for console-only):
 ```bash
-./linux/linux-vm-boot --kernel kernel/vmlinux --rootfs rootfs/rootfs.ext4 --memory 128 --no-network
+./linux/linux-vm-boot --kernel kernel/vmlinux --rootfs rootfs/rootfs-x86_64.ext4 --memory 128 --no-network
 ```
 
 **Login**: `root` / `root`
@@ -213,13 +229,17 @@ The rootfs must be built on Linux with root access:
 
 ```bash
 cd rootfs
-sudo ./build-rootfs.sh
+sudo ./build-rootfs.sh  # Builds both x86_64 and ARM64
 ```
 
-This creates a 256 MB ext4 image with Alpine Linux v3.19 (~50 MB used).
+This creates two 256 MB ext4 images with Alpine Linux v3.19:
+- `rootfs-x86_64.ext4` - for x86_64 Linux/Firecracker
+- `rootfs-aarch64.ext4` - for ARM64 macOS/Apple Silicon
 
-**Time**: 1-2 minutes  
-**Disk**: ~300 MB
+**ARM64 Cross-Compilation**: When building ARM64 on x86_64, the script automatically uses QEMU user-mode emulation to run ARM64 binaries. Requires `qemu-user-static` package (see Prerequisites).
+
+**Time**: 2-4 minutes (both architectures)
+**Disk**: ~600 MB (both images)
 
 See [rootfs/README.md](rootfs/README.md) for details.
 

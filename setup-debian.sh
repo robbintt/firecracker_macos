@@ -22,7 +22,9 @@ $SUDO apt-get install -y -qq \
     libssl-dev \
     bc \
     wget \
-    gcc-aarch64-linux-gnu
+    gcc-aarch64-linux-gnu \
+    qemu-user-static \
+    binfmt-support
 
 echo ""
 echo "[2/5] Installing Firecracker..."
@@ -61,20 +63,21 @@ echo ""
 echo "=== Build Complete ==="
 echo ""
 echo "Artifacts:"
-echo "  kernel/vmlinux        - x86_64 kernel (Intel Macs, Linux)"
-echo "  kernel/vmlinux-arm64  - ARM64 kernel (Apple Silicon)"
-echo "  rootfs/rootfs.ext4    - Root filesystem (works on both)"
-echo "  bin/firecracker       - Firecracker binary"
+echo "  kernel/vmlinux          - x86_64 kernel (Intel Macs, Linux)"
+echo "  kernel/vmlinux-arm64    - ARM64 kernel (Apple Silicon)"
+echo "  rootfs/rootfs-x86_64.ext4   - x86_64 root filesystem"
+echo "  rootfs/rootfs-aarch64.ext4  - ARM64 root filesystem"
+echo "  bin/firecracker         - Firecracker binary"
 echo ""
 echo "For Linux (x86_64):"
-echo "  ./linux/linux-vm-boot --kernel kernel/vmlinux --rootfs rootfs/rootfs.ext4 --memory 128 --no-network"
+echo "  ./linux/linux-vm-boot --kernel kernel/vmlinux --rootfs rootfs/rootfs-x86_64.ext4 --memory 128 --no-network"
 echo ""
 echo "  (To enable networking, set up a TAP device first - see docs)"
 echo ""
 echo "For macOS, copy these files to your Mac:"
-echo "  - kernel/vmlinux (Intel) or kernel/vmlinux-arm64 (Apple Silicon)"
-echo "  - rootfs/rootfs.ext4"
+echo "  - kernel/vmlinux-arm64 (Apple Silicon)"
+echo "  - rootfs/rootfs-aarch64.ext4"
 echo ""
 echo "Then on macOS:"
 echo "  cd macos && ./build.sh"
-echo "  ./macos-vm-boot --kernel ../kernel/vmlinux-arm64 --rootfs ../rootfs/rootfs.ext4 --memory 128"
+echo "  ./macos-vm-boot --kernel ../kernel/vmlinux-arm64 --rootfs ../rootfs/rootfs-aarch64.ext4 --memory 128 --no-network"
